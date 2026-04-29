@@ -20,6 +20,9 @@
 #include <QMessageBox>
 #include <QByteArray>
 #include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
 
 #include <fmt/format.h>
 
@@ -1362,74 +1365,89 @@ void MainWindow::ShowAboutDialog()
 
 // P+ change: New updater; credit to RainbowTabitha and the Mario Party Netplay team for the base code!
 
+static QJsonObject GetLatest36Release(const QJsonArray& releases)
+{
+  for (const QJsonValue& value : releases)
+  {
+    QJsonObject release = value.toObject();
+    QString tag = release.value(QStringLiteral("tag_name")).toString();
+    if (tag.startsWith(QStringLiteral ("36")))
+      return release;
+  }
+  return QJsonObject();  // none found
+}
 void MainWindow::ShowUpdateDialog()
 {
-    Common::HttpRequest httpRequest;
+  Common::HttpRequest httpRequest;
 
-    // Make the GET request
-    auto response = httpRequest.Get("https://api.github.com/repos/Project-Plus-Development-Team/Project-Plus-Dolphin/releases/latest");
+  // Make the GET request
+  auto response = httpRequest.Get(
+      "https://api.github.com/repos/WoodleyBrew/Project-Plus-Dolphin/releases");
 
-    if (response)
-    {
-        // Access the underlying vector and convert it to QByteArray
-        QByteArray responseData(reinterpret_cast<const char*>(response->data()), response->size());
+  if (!response)
+  {
+    QMessageBox::critical(this, tr("Error"), tr("Failed to fetch update information."));
+    return;
+  }
 
-        // Parse the JSON response
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-        QJsonObject jsonObject = jsonDoc.object();
-      
-        QString currentVersion = QString::fromStdString(SCM_DESC_STR);
-        QString latestVersion = jsonObject.value(QStringLiteral("tag_name")).toString();
+  QByteArray responseData(reinterpret_cast<const char*>(response->data()), response->size());
+  QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
 
-        if (currentVersion != latestVersion)
-        {
-          // Create and show the UpdateDialog with the fetched data
-          bool forced = false; // Set this based on your logic
-          UserInterface::Dialog::UpdateDialog updater(this, jsonObject, forced);
-          updater.exec();
-        } else {
-          QMessageBox::information(this, tr("Info"), tr("You are already up to date."));
-        }
-    }
-    else
-    {
-        // Handle error
-        QMessageBox::critical(this, tr("Error"), tr("Failed to fetch update information."));
-    }
+  if (!jsonDoc.isArray())
+    return;
+
+  QJsonArray releases = jsonDoc.array();
+  QJsonObject latest36 = GetLatest36Release(releases);
+
+  if (latest36.isEmpty())
+  {
+    QMessageBox::information(this, tr("Info"), tr("No 36 releases found."));
+    return;
+  }
+
+  QString currentVersion = QString::fromStdString(SCM_DESC_STR);
+  QString latestVersion = latest36.value(QStringLiteral("tag_name")).toString();
+
+  if (currentVersion != latestVersion)
+  {
+    bool forced = false;
+    UserInterface::Dialog::UpdateDialog updater(this, latest36, forced);
+    updater.exec();
+  }
+  else
+  {
+    QMessageBox::information(this, tr("Info"), tr("You are already up to date."));
+  }
 }
 
 void MainWindow::CheckForUpdatesAuto()
 {
-    Common::HttpRequest httpRequest;
+  Common::HttpRequest httpRequest;
+  auto response = httpRequest.Get(
+      "https://api.github.com/repos/WoodleyBrew/Project-Plus-Dolphin/releases");
 
-    // Make the GET request
-    auto response = httpRequest.Get("https://api.github.com/repos/Project-Plus-Development-Team/Project-Plus-Dolphin/releases/latest");
+  if (!response)
+    return;
 
-    if (response)
-    {
-        // Access the underlying vector and convert it to QByteArray
-        QByteArray responseData(reinterpret_cast<const char*>(response->data()), response->size());
+  QByteArray responseData(reinterpret_cast<const char*>(response->data()), response->size());
+  QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
 
-        // Parse the JSON response
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-        QJsonObject jsonObject = jsonDoc.object();
-      
-        QString currentVersion = QString::fromStdString(SCM_DESC_STR);
-        QString latestVersion = jsonObject.value(QStringLiteral("tag_name")).toString();
+  if (!jsonDoc.isArray())
+    return;
 
-        if (currentVersion != latestVersion)
-        {
-          // Create and show the UpdateDialog with the fetched data
-          bool forced = false; // Set this based on your logic
-          UserInterface::Dialog::UpdateDialog updater(this, jsonObject, forced);
-          updater.exec();
-        }
-    }
-    else
-    {
-        // Handle error
-        QMessageBox::critical(this, tr("Error"), tr("Failed to fetch update information."));
-    }
+  QJsonObject latest36 = GetLatest36Release(jsonDoc.array());
+  if (latest36.isEmpty())
+    return;
+
+  QString currentVersion = QString::fromStdString(SCM_DESC_STR);
+  QString latestVersion = latest36.value(QStringLiteral("tag_name")).toString();
+
+  if (currentVersion != latestVersion)
+  {
+    bool forced = false;
+    UserInterface::Dialog::UpdateDialog updater(this, latest36, forced);
+    updater.exec();
+  }
 }
 
 void MainWindow::ShowHotkeyDialog()
@@ -2000,7 +2018,7 @@ void MainWindow::OnStartRecording()
     const SerialInterface::SIDevices si_device = Config::Get(Config::GetInfoForSIDevice(i));
     if (si_device == SerialInterface::SIDEVICE_GC_GBA_EMULATED)
       controllers[i] = Movie::ControllerType::GBA;
-    else if (SerialInterface::SIDevice_IsGCController(si_device))
+    else if (SerialInterface::SIDevice_I36CController(si_device))
       controllers[i] = Movie::ControllerType::GC;
     else
       controllers[i] = Movie::ControllerType::None;
