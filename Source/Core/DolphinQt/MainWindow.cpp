@@ -276,8 +276,6 @@ MainWindow::MainWindow(Core::System& system, std::unique_ptr<BootParameters> boo
   InitCoreCallbacks();
 
   NetPlayInit();
-  
-  CheckForUpdatesAuto();
 
 #ifdef USE_RETRO_ACHIEVEMENTS
   AchievementManager::GetInstance().Init(reinterpret_cast<void*>(winId()));
@@ -1389,40 +1387,6 @@ void MainWindow::ShowUpdateDialog()
           updater.exec();
         } else {
           QMessageBox::information(this, tr("Info"), tr("You are already up to date."));
-        }
-    }
-    else
-    {
-        // Handle error
-        QMessageBox::critical(this, tr("Error"), tr("Failed to fetch update information."));
-    }
-}
-
-void MainWindow::CheckForUpdatesAuto()
-{
-    Common::HttpRequest httpRequest;
-
-    // Make the GET request
-    auto response = httpRequest.Get("https://api.github.com/repos/Project-Plus-Development-Team/Project-Plus-Dolphin/releases/latest");
-
-    if (response)
-    {
-        // Access the underlying vector and convert it to QByteArray
-        QByteArray responseData(reinterpret_cast<const char*>(response->data()), response->size());
-
-        // Parse the JSON response
-        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
-        QJsonObject jsonObject = jsonDoc.object();
-      
-        QString currentVersion = QString::fromStdString(SCM_DESC_STR);
-        QString latestVersion = jsonObject.value(QStringLiteral("tag_name")).toString();
-
-        if (currentVersion != latestVersion)
-        {
-          // Create and show the UpdateDialog with the fetched data
-          bool forced = false; // Set this based on your logic
-          UserInterface::Dialog::UpdateDialog updater(this, jsonObject, forced);
-          updater.exec();
         }
     }
     else
