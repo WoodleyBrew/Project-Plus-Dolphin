@@ -120,10 +120,10 @@ modules:
 
       # TODO: Add x-checker-data
       # Project Plus .dol files and icon
-      - type: archive
-        url: https://github.com/jlambert360/FPM-AppImage/releases/download/v3.1.2/Launcher.tar.gz
-        sha256: 1b9dce2fb0eac3ad8cc809826b3b6bfd4ce30dbfc394eaa586e35dcd356fd189                  # This is the hash of the tar.gz file not the uncompressed
-        dest: Launcher
+      #- type: archive
+      #  url: https://github.com/jlambert360/FPM-AppImage/releases/download/v3.1.2/Launcher.tar.gz
+      #   sha256: 1b9dce2fb0eac3ad8cc809826b3b6bfd4ce30dbfc394eaa586e35dcd356fd189                  # This is the hash of the tar.gz file not the uncompressed
+      #  dest: Launcher
 
       # TODO: Add x-checker-data
       # Project Plus ModPack that contains HD textures
